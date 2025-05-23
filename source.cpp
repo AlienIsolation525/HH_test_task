@@ -9,34 +9,31 @@
 #include <map>
 using namespace std;
 
-/*Инициализируем необходимые глобальные переменные
-* константы (размеры окна, радиус чашки Петри),
-* параметры сетки и оффсеты для отрисовки
+/*Here we initialise constants, default values
+*  like radius of dishes 
+*  grid layout and offsets
 */
-const SDL_Color LIVE_COLOR = { 255, 255, 255, 255 };//cерый
-const SDL_Color DEAD_COLOR = { 0, 0, 0, 255 };//черный
+const SDL_Color LIVE_COLOR = { 255, 255, 255, 255 };
+const SDL_Color DEAD_COLOR = { 0, 0, 0, 255 };
 const SDL_Color GRID_COLOR = { 0, 0, 0, 255 };
-// Заглушки 
-int SCREEN_WIDTH;
-int SCREEN_HEIGHT;
-int PETRI_RADIUS;
-int CELL_SIZE;
-int GAME_SPEED;
-int GRID_WIDTH;
-int GRID_HEIGHT;
-int GRID_OFFSET_X;
+int SCREEN_WIDTH; //width of window
+int SCREEN_HEIGHT; //height of window
+int PETRI_RADIUS; // radius of dish's vis
+int CELL_SIZE; // grid_cell_size ( edge of a square )
+int GAME_SPEED; // speed of frame update
+int GRID_WIDTH; // width of grid
+int GRID_HEIGHT; // height of grid
+int GRID_OFFSET_X; // offset
 int GRID_OFFSET_Y;
-// Значения по умолчанию
+// Defaults
 const int Default_SCREEN_WIDTH = 800;
 const int Default_SCREEN_HEIGHT = 800;
 const int Default_PETRI_RADIUS = 350;
 const int Default_CELL_SIZE = 20;
 
-/* Игровое поле представленное двумерным контейнером с размерами,
-* вычисленными по формуле диаметр чаши / размер ячейки
-*/
 vector<vector<bool>> grid;
 bool isPaused = true;
+bool running = true;
 
 // Redefinition of clamp method which clamps vector with upper and lower bounds
 template <typename T>
@@ -67,17 +64,24 @@ bool isInsidePetri(int x, int y) {
     return (x - center_x) * (x - center_x) + (y - center_y) * (y - center_y) <= PETRI_RADIUS * PETRI_RADIUS;
 }
 
-// Функция для преобразования координат экрана в координаты сетки (если внутри чашки)
+/*! Function that transforms global cords to grid cords 
+* uses formula: global_Cord - grid_offset / grid_cell_size
+* 
+* 
+*/
 pair<int, int> screenToGrid(int screenX, int screenY) {
     int gridX = (screenX - GRID_OFFSET_X) / CELL_SIZE;
     int gridY = (screenY - GRID_OFFSET_Y) / CELL_SIZE;
-    if (gridX >= 0 && gridX < GRID_WIDTH && gridY >= 0 && gridY < GRID_HEIGHT && isInsidePetri(screenX, screenY)) {
+    if ( gridX >= 0 && gridX < GRID_WIDTH 
+        && gridY >= 0 && gridY < GRID_HEIGHT
+        && isInsidePetri(screenX, screenY) ) 
+    {
         return { gridX, gridY };
     }
-    return { -1, -1 }; // Возвращаем ошибочные значения
+    return { -1, -1 };
 }
 
-// Функция для отрисовки игрового поля внутри чашки Петри
+// Visualise the grid with defined grid_cell_size and color
 void renderGrid(SDL_Renderer* renderer) {
     for (int y = 0; y < GRID_HEIGHT; ++y) {
         for (int x = 0; x < GRID_WIDTH; ++x) {
@@ -94,7 +98,6 @@ void renderGrid(SDL_Renderer* renderer) {
         }
     }
 
-    // Отрисовка сетки только внутри чаши Петри
     SDL_SetRenderDrawColor(renderer, GRID_COLOR.r, GRID_COLOR.g, GRID_COLOR.b, GRID_COLOR.a);
     for (int x = 0; x <= GRID_WIDTH; ++x) {
         int screenX = GRID_OFFSET_X + x * CELL_SIZE;
@@ -110,7 +113,7 @@ void renderGrid(SDL_Renderer* renderer) {
     }
 }
 
-// Функция для обновления состояния игрового поля
+// Update filed's condition with the actual one
 vector<vector<bool>> updateGrid() {
     vector<vector<bool>> nextGrid = grid;
     for (int y = 0; y < GRID_HEIGHT; ++y) {
@@ -128,15 +131,16 @@ vector<vector<bool>> updateGrid() {
                     }
                 }
             }
-
-            // Правила Game of Life
+            // Rules of life-cycle
             if (grid[y][x]) {
-                if (liveNeighbors < 2 || liveNeighbors > 3) {
+                if (liveNeighbors < 2 || liveNeighbors > 3)
+                {
                     nextGrid[y][x] = false;
                 }
             }
             else {
-                if (liveNeighbors == 3) {
+                if (liveNeighbors == 3)
+                {
                     nextGrid[y][x] = true;
                 }
             }
@@ -144,6 +148,79 @@ vector<vector<bool>> updateGrid() {
     }
     return nextGrid;
 }
+
+class Core {
+    /* !Class that represents the lopp
+    *   of main programm part working
+    * Creates window
+    * Updates frame
+    * Handle k/m events
+    */
+private:
+    SDL_Window* window = SDL_CreateWindow("Game of life", SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH,
+        SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    
+public:
+    // life_cycle
+    void main_loop() {
+        if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+            cerr << "SDL initialization failed: " << SDL_GetError() << endl;
+            return;
+        }
+        SDL_Event event;
+
+        while (running) {
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_QUIT) // Quit
+                {
+                    cout << "Application closed by user";
+                        running = false;
+                }
+                else if (event.type == SDL_KEYDOWN) // Pause
+                {
+                    if (event.key.keysym.sym == SDLK_SPACE) {
+                        isPaused = !isPaused;
+                    }
+                }
+                else if (event.type == SDL_MOUSEBUTTONDOWN) // Click action
+                {
+                    if (event.button.button == SDL_BUTTON_LEFT) {
+                        int mouseX, mouseY;
+                        SDL_GetMouseState(&mouseX, &mouseY);
+                        pair<int, int> gridPos = screenToGrid(mouseX, mouseY);
+                        if (gridPos.first != -1) {
+                            grid[gridPos.second][gridPos.first] = !grid[gridPos.second][gridPos.first];
+                        }
+                    }
+                }
+            }
+
+            // Frame update
+            if (!isPaused) {
+                grid = updateGrid();
+            }
+
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+
+            drawPetriDish(renderer);
+
+            renderGrid(renderer);
+
+            SDL_RenderPresent(renderer);
+
+            SDL_Delay(GAME_SPEED);
+        }
+
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+    }
+
+};
 
 int main(int argc, char* argv[]) {
     SCREEN_WIDTH = Default_SCREEN_WIDTH;
@@ -160,16 +237,16 @@ int main(int argc, char* argv[]) {
             argMap[arg.substr(0, eqPos)] = arg.substr(eqPos + 1);
         }
     }
-
+    // Replace default values with console args if need
     if (argMap.count("--width")) {
         try {
             SCREEN_WIDTH = stoi(argMap["--width"]);
         }
         catch (const invalid_argument& e) {
-            cerr << "Ошибка: Некорректное значение ширины: " << argMap["--width"] << endl;
+            cerr << "ERROR" << argMap["--width"] << endl;
         }
         catch (const out_of_range& e) {
-            cerr << "Ошибка: Значение ширины вне допустимого диапазона: " << argMap["--width"] << endl;
+            cerr << "ERROR" << argMap["--width"] << endl;
         }
     }
 
@@ -178,10 +255,10 @@ int main(int argc, char* argv[]) {
             SCREEN_HEIGHT = stoi(argMap["--height"]);
         }
         catch (const invalid_argument& e) {
-            cerr << "Ошибка: Некорректное значение высоты: " << argMap["--height"] << endl;
+            cerr << "ERROR" << argMap["--height"] << endl;
         }
         catch (const out_of_range& e) {
-            cerr << "Ошибка: Значение высоты вне допустимого диапазона: " << argMap["--height"] << endl;
+            cerr << "ERROR" << argMap["--height"] << endl;
         }
     }
 
@@ -190,22 +267,22 @@ int main(int argc, char* argv[]) {
             PETRI_RADIUS = stoi(argMap["--radius"]);
         }
         catch (const invalid_argument& e) {
-            cerr << "Ошибка: Некорректное значение радиуса: " << argMap["--radius"] << endl;
+            cerr << "ERROR" << argMap["--radius"] << endl;
         }
         catch (const out_of_range& e) {
-            cerr << "Ошибка: Значение радиуса вне допустимого диапазона: " << argMap["--radius"] << endl;
+            cerr << "ERROR" << argMap["--radius"] << endl;
         }
     }
 
-    if (argMap.count("--cell_size")) {
+    if (argMap.count("--grid_cell_size")) {
         try {
             CELL_SIZE = stoi(argMap["--cell_size"]);
         }
         catch (const invalid_argument& e) {
-            cerr << "Ошибка: Некорректное значение размера клетки: " << argMap["--cell_size"] << endl;
+            cerr << "ERROR" << argMap["--cell_size"] << endl;
         }
         catch (const out_of_range& e) {
-            cerr << "Ошибка: Значение размера клетки вне допустимого диапазона: " << argMap["--cell_size"] << endl;
+            cerr << "ERROR" << argMap["--cell_size"] << endl;
         }
     }
 
@@ -214,73 +291,21 @@ int main(int argc, char* argv[]) {
             GAME_SPEED = stoi(argMap["--speed"]);
         }
         catch (const invalid_argument& e) {
-            cerr << "Ошибка: Некорректное значение скорости: " << argMap["--speed"] << endl;
+            cerr << "ERROR" << argMap["--speed"] << endl;
         }
         catch (const out_of_range& e) {
-            cerr << "Ошибка: Значение скорости вне допустимого диапазона: " << argMap["--speed"] << endl;
+            cerr << "ERROR" << argMap["--speed"] << endl;
         }
     }
 
-    // Инициализация размеров сетки и игрового поля после обработки аргументов
     GRID_WIDTH = static_cast<int>(2.0 * PETRI_RADIUS / CELL_SIZE);
     GRID_HEIGHT = static_cast<int>(2.0 * PETRI_RADIUS / CELL_SIZE);
     GRID_OFFSET_X = SCREEN_WIDTH / 2 - (GRID_WIDTH * CELL_SIZE) / 2;
     GRID_OFFSET_Y = SCREEN_HEIGHT / 2 - (GRID_HEIGHT * CELL_SIZE) / 2;
     grid.resize(GRID_HEIGHT, vector<bool>(GRID_WIDTH, false));
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        cerr << "SDL initialization failed: " << SDL_GetError() << endl;
-        return 1;
-    }
-
-    SDL_Window* window = SDL_CreateWindow("Petri Dish Life", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-    bool running = true;
-    SDL_Event event;
-
-    while (running) {
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                running = false;
-            }
-            else if (event.type == SDL_KEYDOWN) {
-                if (event.key.keysym.sym == SDLK_SPACE) {
-                    isPaused = !isPaused;
-                }
-            }
-            else if (event.type == SDL_MOUSEBUTTONDOWN) {
-                if (event.button.button == SDL_BUTTON_LEFT) {
-                    int mouseX, mouseY;
-                    SDL_GetMouseState(&mouseX, &mouseY);
-                    pair<int, int> gridPos = screenToGrid(mouseX, mouseY);
-                    if (gridPos.first != -1) {
-                        grid[gridPos.second][gridPos.first] = !grid[gridPos.second][gridPos.first];
-                    }
-                }
-            }
-        }
-
-        // Обновление состояния игры
-        if (!isPaused) {
-            grid = updateGrid();
-        }
-
-        // Отрисовка
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        drawPetriDish(renderer);
-        renderGrid(renderer);
-
-        SDL_RenderPresent(renderer);
-
-        SDL_Delay(GAME_SPEED); // Скорость игры
-    }
-
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-
+    Core c;
+    c.main_loop();
+   
     return 0;
 }

@@ -1,5 +1,11 @@
 # Game_of_life - https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
 
+This simple programm( made using sdk2 library and cmake) represents the life of bacteria in Petri dishes. Player can capture the environment by microorganisms, selecting starting points and paste the tamplate of microorganisms in a clear Petri dish.
+
+SPACEBAR - Pause the game.
+MOUSECLICK - Select \ unselect cell on grid.
+ALTBUTTON - Paste the microorganism in a new dish.
+
 Build and enjoy
 
 ```mkdir build```
