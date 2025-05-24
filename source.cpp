@@ -31,17 +31,9 @@ const int Default_SCREEN_HEIGHT = 800;
 const int Default_PETRI_RADIUS = 350;
 const int Default_CELL_SIZE = 20;
 
-vector<vector<bool>> grid;
+vector< vector<bool> > grid;
 bool isPaused = true;
 bool running = true;
-
-// Redefinition of clamp method which clamps vector with upper and lower bounds
-template <typename T>
-const T& clamp(const T& val, const T& low, const T& high) {
-    if (val < low) return low;
-    if (val > high) return high;
-    return val;
-}
 
 void drawPetriDish(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
@@ -66,7 +58,6 @@ bool isInsidePetri(int x, int y) {
 
 /*! Function that transforms global cords to grid cords 
 * uses formula: global_Cord - grid_offset / grid_cell_size
-* 
 * 
 */
 pair<int, int> screenToGrid(int screenX, int screenY) {
@@ -156,14 +147,8 @@ class Core {
     * Updates frame
     * Handle k/m events
     */
-private:
-    SDL_Window* window = SDL_CreateWindow("Game of life", SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH,
-        SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    
 public:
+    Core() = default;
     // life_cycle
     void main_loop() {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -220,6 +205,12 @@ public:
         SDL_Quit();
     }
 
+private:
+    SDL_Window* window = SDL_CreateWindow("Game of life", SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH,
+        SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 };
 
 int main(int argc, char* argv[]) {
